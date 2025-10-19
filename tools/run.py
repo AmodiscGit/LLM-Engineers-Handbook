@@ -2,6 +2,7 @@ from datetime import datetime as dt
 from pathlib import Path
 
 import click
+from dotenv import load_dotenv
 from loguru import logger
 
 from llm_engineering import settings
@@ -14,6 +15,8 @@ from pipelines import (
     generate_datasets,
     training,
 )
+
+load_dotenv()
 
 
 @click.command(
