@@ -175,3 +175,6 @@ run_ids.txt
 # Virtual environments
 *_venv
 *_myenv
+configs/s3_etl.yaml
+*.yaml
+.env.s3
