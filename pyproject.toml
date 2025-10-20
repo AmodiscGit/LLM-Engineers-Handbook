@@ -44,6 +44,8 @@ opik = "^0.2.2"
 pyjwt = "2.7.0"
 zenml = {extras = ["local", "server"], version = "^0.90.0"}
 playwright = "^1.55.0"
+pypdf2 = "^3.0.1"
+python-docx = "^1.2.0"
 
 
 [tool.poetry.group.dev.dependencies]
