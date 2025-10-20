@@ -14,6 +14,68 @@
   Find the book on <a href="https://www.amazon.com/LLM-Engineers-Handbook-engineering-production/dp/1836200072/">Amazon</a> or <a href="https://www.packtpub.com/en-us/product/llm-engineers-handbook-9781836200062">Packt</a>
 </p>
 
+## What does the project do?
+What does this project do?
+Purpose:
+This project is a full-stack, modular pipeline for building, training, evaluating, and deploying Large Language Model (LLM) applications. It’s designed to help you go from raw data (like social media posts, articles, or repositories) to a fine-tuned LLM that can perform specific tasks.
+
+Key Features:
+
+1. Data Ingestion: Scrapes or loads data from sources (social media, articles, etc.).
+
+2. Data Cleaning & Feature Engineering: Cleans, processes, and structures the data for LLM training.
+
+3. Dataset Generation: Creates instruction or preference datasets for supervised fine-tuning.
+
+4. Training Pipelines: Fine-tunes LLMs using your datasets.
+
+5. Evaluation: Evaluates model performance.
+
+6. Export & Deployment: Prepares and pushes models/datasets to platforms like Hugging Face or AWS.
+
+Is it using mock data or real scraping?
+
+- By default:
+The project can use either real data (if you connect it to your own MongoDB/Qdrant and run the ETL pipeline) or mock/sample data (if you haven’t ingested real data yet).
+- Scraping:
+The ETL (Extract, Transform, Load) pipeline is designed to scrape or ingest data from real sources (social media, blogs, GitHub, etc.) if you configure it with the right credentials and endpoints.
+- Mock Data:
+If you haven’t set up real data sources, it can run with sample/mock data for demonstration and testing.
+
+How is this applicable to real-life LLM tasks?
+
+- Custom Data:
+You can point the ETL pipeline to your own data sources (e.g., your company’s Slack, Twitter, blog, or internal docs).
+- Custom Tasks:
+You can define what kind of tasks you want your LLM to perform (e.g., summarization, Q&A, classification, code generation).
+- Fine-tuning:
+The pipeline helps you generate the right datasets and fine-tune an LLM (like Llama, Mistral, or GPT) to perform those tasks using your data.
+- Evaluation & Deployment:
+You can evaluate the model’s performance and deploy it to production (locally, on AWS, or on Hugging Face).
+
+
+Is it ready to connect to AWS?
+- Yes, but not required:
+The project is ready to connect to AWS for storage, model hosting, or SageMaker training, but you can run everything locally or on other platforms if you prefer.
+- You control when/if you connect to AWS.
+
+
+How can you adapt it for your own LLM and tasks?
+1. Ingest your own data:
+Configure the ETL pipeline to pull from your sources.
+2. Define your tasks:
+Decide what you want your LLM to do (e.g., answer support questions, summarize reports).
+3. Generate datasets:
+Use the pipeline to create instruction or preference datasets from your data.
+4. Fine-tune:
+Train an LLM using these datasets.
+5. Evaluate and deploy:
+Test the model, then deploy it where you need it.
+
+Summary:
+This project is a production-grade template for building LLM-powered applications, from data collection to deployment. It’s flexible: you can use it for mock/demo purposes or adapt it to real, custom LLM projects for your own data and tasks.
+
+
 ## 🌟 Features
 
 The goal of this book is to create your own end-to-end LLM-based system using best practices:

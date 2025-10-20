@@ -4,7 +4,7 @@ from zenml.client import Client
 import openai
 from openai import OpenAIError
 
-@step
+@step(enable_cache=False)
 def summarize_documents(documents: list) -> list:
     secret = Client().get_secret("openai_secret")
     openai.api_key = secret.secret_values["OPENAI_API_KEY"]

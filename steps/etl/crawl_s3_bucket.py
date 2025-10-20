@@ -12,7 +12,7 @@ try:
 except ImportError:
     docx = None
 
-@step
+@step(enable_cache=False)
 def crawl_s3_bucket(bucket_name: str, aws_access_key_id: str, aws_secret_access_key: str, prefix: str = "") -> List[str]:
     """
     Scrape all .txt, .pdf, and .docx files from the specified S3 bucket and return their contents as a list of strings.
