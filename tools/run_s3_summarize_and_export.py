@@ -3,6 +3,7 @@ import os
 import yaml
 from pipelines.s3_summarization_etl_pipeline import s3_summarization_etl_pipeline
 from pipelines.export_s3_summaries_to_json import export_s3_summaries_to_json
+from tools import merge_and_clean_summaries
 
 if __name__ == "__main__":
     # Load AWS credentials
@@ -28,4 +29,5 @@ if __name__ == "__main__":
     # Export summaries artifact to JSON
     print("Exporting summaries artifact to JSON...")
     export_s3_summaries_to_json()
+ 
     print("Export complete.")
