@@ -17,6 +17,13 @@ alpaca_template = """Below is an instruction that describes a task. Write a resp
 ### Response:
 {}"""
 
+### Change these levers to tweak the training process !!!!!!!!!!!!!!!!!!!!!!
+
+## eg: num_train_epochs (e.g., 3, 5, 10)
+# per_device_train_batch_size (increase if GPU permits)
+# learning_rate (try 3e-5 or 1e-5)
+# is_dummy=False to use full dataset
+# max_seq_length if you need longer context
 
 def finetune_local(
     model_name: str,
@@ -25,7 +32,7 @@ def finetune_local(
     num_train_epochs: int = 1,
     per_device_train_batch_size: int = 2,
     learning_rate: float = 5e-5,
-    is_dummy: bool = True,
+    is_dummy: bool = False,
     max_seq_length: int = 512,
 ) -> Tuple[AutoModelForCausalLM, AutoTokenizer]:
     """A lightweight local finetune using Hugging Face Trainer.
