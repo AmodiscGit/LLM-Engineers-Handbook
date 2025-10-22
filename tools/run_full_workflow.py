@@ -15,6 +15,7 @@ import subprocess
 import glob
 import json
 import sys
+import argparse
 
 
 def run_cmd(cmd, env=None):
@@ -112,6 +113,10 @@ def produce_training_jsonl(hybrid_jsonl_path="data/artifacts/hybrid_summaries.js
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Run the full ETL -> hybrid -> training workflow")
+    parser.add_argument("--long-finetune", action="store_true", help="Run a longer finetune at the end (tools/run_long_finetune.py)")
+    args = parser.parse_args()
+
     # 1) Run ETL to fetch raw documents
     run_cmd("poetry run python tools/run_s3_etl.py")
 
@@ -132,6 +137,11 @@ def main():
 
     print("\nFull workflow complete.")
     print(f"Training file: {training_path} ({kept}/{total} kept)")
+
+    # Optional: run a longer finetune when requested
+    if args.long_finetune:
+        print("\n--long-finetune specified: running longer finetune script...")
+        run_cmd("poetry run python tools/run_long_finetune.py")
 
 
 if __name__ == "__main__":
