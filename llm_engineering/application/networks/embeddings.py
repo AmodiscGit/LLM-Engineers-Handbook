@@ -5,8 +5,6 @@ from typing import Optional
 import numpy as np
 from loguru import logger
 from numpy.typing import NDArray
-from sentence_transformers.SentenceTransformer import SentenceTransformer
-from sentence_transformers.cross_encoder import CrossEncoder
 from transformers import AutoTokenizer
 
 from llm_engineering.settings import settings
@@ -28,12 +26,23 @@ class EmbeddingModelSingleton(metaclass=SingletonMeta):
         self._model_id = model_id
         self._device = device
 
-        self._model = SentenceTransformer(
-            self._model_id,
-            device=self._device,
-            cache_folder=str(cache_dir) if cache_dir else None,
-        )
-        self._model.eval()
+        # Lazy import to avoid bringing sentence-transformers into the top-level
+        # module import path. This prevents import-time failures when
+        # sentence-transformers or its transitive deps (huggingface_hub) are
+        # incompatible with the runtime environment. The import happens only
+        # when an embedding model is actually instantiated.
+        try:
+            from sentence_transformers import SentenceTransformer  # type: ignore
+
+            self._model = SentenceTransformer(
+                self._model_id,
+                device=self._device,
+                cache_folder=str(cache_dir) if cache_dir else None,
+            )
+            self._model.eval()
+        except Exception as e:  # pragma: no cover - environment-dependent
+            logger.error(f"Failed to load SentenceTransformer: {e}")
+            raise
 
     @property
     def model_id(self) -> str:
@@ -121,11 +130,19 @@ class CrossEncoderModelSingleton(metaclass=SingletonMeta):
         self._model_id = model_id
         self._device = device
 
-        self._model = CrossEncoder(
-            model_name=self._model_id,
-            device=self._device,
-        )
-        self._model.model.eval()
+        # Lazy import to avoid importing sentence-transformers at module import
+        # time. Import the CrossEncoder only when an instance is created.
+        try:
+            from sentence_transformers.cross_encoder import CrossEncoder  # type: ignore
+
+            self._model = CrossEncoder(
+                model_name=self._model_id,
+                device=self._device,
+            )
+            self._model.model.eval()
+        except Exception as e:  # pragma: no cover - environment-dependent
+            logger.error(f"Failed to load CrossEncoder: {e}")
+            raise
 
     def __call__(self, pairs: list[tuple[str, str]], to_list: bool = True) -> NDArray[np.float32] | list[float]:
         scores = self._model.predict(pairs)

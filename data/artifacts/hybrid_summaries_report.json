@@ -1,0 +1,7 @@
+{
+  "summaries_total": 7,
+  "docs_total": 6,
+  "paired": 6,
+  "unmatched": 1,
+  "output_file": "data/artifacts/hybrid_summaries.jsonl"
+}

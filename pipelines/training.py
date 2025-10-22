@@ -10,6 +10,8 @@ def training(
     per_device_train_batch_size: int = 2,
     learning_rate: float = 3e-4,
     dataset_huggingface_workspace: str = "mlabonne",
+    dataset_path: str = "output/all_cleaned_summaries.json",
+    output_dir: str = "output/trained_model",
     is_dummy: bool = False,
 ) -> None:
     training_steps.train(
@@ -18,5 +20,7 @@ def training(
         per_device_train_batch_size=per_device_train_batch_size,
         learning_rate=learning_rate,
         dataset_huggingface_workspace=dataset_huggingface_workspace,
+        dataset_path=dataset_path,
+        output_dir=output_dir,
         is_dummy=is_dummy,
     )

@@ -2,19 +2,29 @@ import re
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter, SentenceTransformersTokenTextSplitter
 
-from llm_engineering.application.networks import EmbeddingModelSingleton
+# Lazily constructed embedding model to avoid importing heavy or incompatible
+# packages (sentence-transformers) during module import time.
+_embedding_model = None
 
-embedding_model = EmbeddingModelSingleton()
+
+def get_embedding_model():
+    global _embedding_model
+    if _embedding_model is None:
+        from llm_engineering.application.networks import EmbeddingModelSingleton
+
+        _embedding_model = EmbeddingModelSingleton()
+    return _embedding_model
 
 
 def chunk_text(text: str, chunk_size: int = 500, chunk_overlap: int = 50) -> list[str]:
     character_splitter = RecursiveCharacterTextSplitter(separators=["\n\n"], chunk_size=chunk_size, chunk_overlap=0)
     text_split_by_characters = character_splitter.split_text(text)
 
+    em = get_embedding_model()
     token_splitter = SentenceTransformersTokenTextSplitter(
         chunk_overlap=chunk_overlap,
-        tokens_per_chunk=embedding_model.max_input_length,
-        model_name=embedding_model.model_id,
+        tokens_per_chunk=em.max_input_length,
+        model_name=em.model_id,
     )
     chunks_by_tokens = []
     for section in text_split_by_characters:
