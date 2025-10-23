@@ -14,6 +14,53 @@ from typing import List, Dict
 DEFAULT_RAW = "data/artifacts/raw_documents.json"
 DEFAULT_SUMMARIES = "output/all_cleaned_summaries.json"
 
+# simple in-memory cache for cleaned summaries
+_CLEANED_CACHE = None
+
+
+def _load_cleaned_summaries():
+    """Load cleaned summaries and return as a list of dicts (cached)."""
+    global _CLEANED_CACHE
+    if _CLEANED_CACHE is not None:
+        return _CLEANED_CACHE
+    data = _load_json(DEFAULT_SUMMARIES)
+    if not isinstance(data, list):
+        data = []
+    _CLEANED_CACHE = data
+    return _CLEANED_CACHE
+
+
+def _find_cleaned_summary_for_text(text: str):
+    """Find the best cleaned summary that matches `text` by token overlap.
+
+    Returns the cleaned summary string or None.
+    """
+    if not text:
+        return None
+    cleaned = _load_cleaned_summaries()
+    if not cleaned:
+        return None
+
+    tokens = [t.lower() for t in re.findall(r"\w+", text) if len(t) > 3]
+    if not tokens:
+        return None
+
+    best = (None, 0)
+    for item in cleaned:
+        try:
+            cs = item.get("summary") or ""
+            low = cs.lower()
+            score = sum(1 for tok in tokens if tok in low)
+            if score > best[1]:
+                best = (cs, score)
+        except Exception:
+            continue
+
+    # require at least two overlapping tokens to accept match
+    if best[0] and best[1] >= 2:
+        return best[0]
+    return None
+
 
 def _load_json(path: str):
     if not os.path.exists(path):
@@ -141,21 +188,65 @@ def summarize_with_provenance(query: str, results: List[Dict], max_sources: int 
         if not isinstance(text, str) or not text.strip():
             continue
 
-        # split into sentences and pick those containing tokens
-        sents = re.split(r"(?<=[.!?])\\s+", text.strip())
+        # split into sentences: break on sentence enders or on newlines to avoid huge single "sentences"
+        sents = re.split(r"(?<=[.!?])\s+|\n+", text.strip())
         matched = [s for s in sents if any(tok in s.lower() for tok in tokens)]
-        if not matched:
-            # fallback: take first two sentences
-            matched = sents[:2]
 
-        # dedupe matched sentences
+        if not matched:
+            # fallback: take first two reasonable sentences (or text chunks)
+            # ensure we don't return extremely long pieces
+            matched = []
+            for s in sents:
+                if s and len(matched) < 2:
+                    matched.append(s)
+                if len(matched) >= 2:
+                    break
+
+        # helper to shorten long snippets into concise bullets
+        def _shorten(s: str, maxlen: int = 200) -> str:
+            s = s.strip()
+            if not s:
+                return s
+            if len(s) <= maxlen:
+                return s
+            # try to cut at sentence end within maxlen
+            cut = s.rfind('.', 0, maxlen)
+            if cut != -1 and cut > int(maxlen * 0.5):
+                return s[:cut+1]
+            # otherwise, cut at maxlen and add ellipsis
+            return s[:maxlen].rsplit(' ', 1)[0] + '...'
+
+        # dedupe matched sentences and trim long ones to a window around matched tokens
         seen = set()
         matched_clean = []
         for s in matched:
             t = s.strip()
-            if t and t not in seen:
-                matched_clean.append(t)
-                seen.add(t)
+            if not t or t in seen:
+                continue
+
+            # if the matched sentence is very long, trim to a window around the first matching token
+            if len(t) > 600 and tokens:
+                low = t.lower()
+                pos = None
+                for tok in tokens:
+                    idx = low.find(tok)
+                    if idx != -1:
+                        pos = idx
+                        break
+                if pos is not None:
+                    start = max(0, pos - 150)
+                    end = min(len(t), pos + 450)
+                    trimmed = t[start:end].strip()
+                    if start > 0:
+                        trimmed = "..." + trimmed
+                    if end < len(t):
+                        trimmed = trimmed + "..."
+                    t = trimmed
+
+            # shorten to concise form for bullets
+            short_t = _shorten(t, maxlen=200)
+            matched_clean.append(short_t)
+            seen.add(t)
 
         if matched_clean:
             # record for overall summary
@@ -168,6 +259,21 @@ def summarize_with_provenance(query: str, results: List[Dict], max_sources: int 
                 link = src.get("link") or src.get("source_file") or src.get("id") or "unknown"
 
             provenance_entries.append({"index": i, "link": link, "snippets": matched_clean})
+
+    # If a cleaned summary is available (precomputed), prefer it for the top source
+    # This avoids verbatim dumps when we already have a human/ETL-generated summary
+    top_text = sources[0].get("snippet") or sources[0].get("content") or ""
+    cleaned = _find_cleaned_summary_for_text(top_text)
+    if cleaned:
+        # return the cleaned summary and still list the provenance entries
+        bullets = []
+        for entry in provenance_entries:
+            i = entry["index"]
+            link = entry["link"]
+            snippets_joined = " ".join(entry["snippets"][:2])
+            bullets.append(f"[{i}] {snippets_joined} (source: {link})")
+        summary = cleaned + "\n\nSources:\n" + "\n".join(bullets)
+        return summary
 
     # Create a concise overall summary: pick up to 5 unique sentences
     unique_overall = []

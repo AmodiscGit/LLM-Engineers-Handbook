@@ -161,6 +161,53 @@ def _resolve_link_from_local_artifacts(r: dict, snippet: str | None = None) -> s
     return ""
 
 
+def _get_content_from_local_artifacts(r: dict, snippet: str | None = None) -> str:
+    """Return the full content for a result by looking up local artifacts by id or snippet.
+
+    Falls back to the provided snippet or r.get('snippet').
+    """
+    import json
+    from pathlib import Path
+
+    data_dir = Path("data") / "artifacts"
+    if not data_dir.exists():
+        return snippet or r.get("snippet", "") or ""
+
+    rid = r.get("id") or r.get("metadata", {}).get("matched_raw_doc_id")
+    # try id match
+    if rid:
+        for p in data_dir.glob("*.json"):
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    doc = json.load(f)
+                items = doc if isinstance(doc, list) else [doc]
+                for item in items:
+                    if not isinstance(item, dict):
+                        continue
+                    if item.get("id") == rid or item.get("matched_raw_doc_id") == rid:
+                        return item.get("content") or item.get("text") or item.get("summary") or snippet or r.get("snippet", "") or ""
+            except Exception:
+                continue
+
+    # fallback: search raw_documents.json by snippet substring
+    raw_path = data_dir / "raw_documents.json"
+    if raw_path.exists() and snippet:
+        try:
+            with open(raw_path, "r", encoding="utf-8") as f:
+                raw = json.load(f)
+            for item in raw:
+                try:
+                    content = item.get("content") or item.get("text") or ""
+                    if snippet.strip() and snippet.strip()[:120] in (content or ""):
+                        return content
+                except Exception:
+                    continue
+        except Exception:
+            pass
+
+    return snippet or r.get("snippet", "") or ""
+
+
 st.set_page_config(page_title="S3 Explorer & QA", layout="wide")
 
 st.title("S3 Explorer & QA")
@@ -172,6 +219,22 @@ with col1:
     st.header("Search method")
     method = st.radio("Use:", ("vector_retriever", "keyword_fallback"))
     k = st.slider("Number of results", min_value=1, max_value=10, value=5)
+    # Score filter controls: allow users to show only results above a threshold
+    if "score_filter_threshold" not in st.session_state:
+        st.session_state["score_filter_threshold"] = 35
+    thresh = st.number_input("Min score to show (inclusive)", min_value=0, value=int(st.session_state["score_filter_threshold"]), step=1)
+    st.session_state["score_filter_threshold"] = int(thresh)
+    if "score_filter_active" not in st.session_state:
+        st.session_state["score_filter_active"] = False
+    col_sf = st.columns([1, 1])
+    with col_sf[0]:
+        if st.button("Apply score filter"):
+            st.session_state["score_filter_active"] = True
+            st.success(f"Score filter enabled: >= {st.session_state['score_filter_threshold']}")
+    with col_sf[1]:
+        if st.button("Clear score filter"):
+            st.session_state["score_filter_active"] = False
+            st.info("Score filter cleared")
     st.markdown("---")
     st.header("S3 actions")
     st.write("You can scan the S3 bucket configured in `configs/s3_etl.yaml` (credentials loaded from `.env.s3`).")
@@ -290,6 +353,15 @@ with col1:
 with col2:
     st.header("Results & Summaries")
     results = st.session_state.get("results", [])
+    # apply score filter if active
+    if st.session_state.get("score_filter_active"):
+        try:
+            thr = int(st.session_state.get("score_filter_threshold", 0))
+            filtered = [r for r in results if (r.get("score") is not None and float(r.get("score", 0)) >= thr)]
+            results = filtered
+        except Exception:
+            # if something goes wrong, leave results unchanged
+            pass
     if not results:
         st.info("No results yet — run a search on the left.")
     else:
@@ -390,8 +462,11 @@ with col2:
             # individual quick summary (unique key via button id)
             summarize_btn_key = f"summarize_btn_{rid}"
             if st.button(f"Summarize {i}", key=summarize_btn_key):
-                with st.spinner("Summarizing..."):
-                    summary = ui_helpers.summarize_text(r.get("snippet", ""))
+                with st.spinner("Summarizing with provenance..."):
+                    # try to fetch full content for a better summary
+                    full_text = _get_content_from_local_artifacts(r, snippet=r.get("snippet"))
+                    fake_result = {"id": r.get("id"), "snippet": full_text, "metadata": {"link": r.get("metadata", {}).get("link") or r.get("source") or r.get("link")}}
+                    summary = ui_helpers.summarize_with_provenance(query, [fake_result], max_sources=1)
                     st.success(summary)
 
             # optional raw payload debug view
