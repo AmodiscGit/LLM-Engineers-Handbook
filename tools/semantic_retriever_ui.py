@@ -284,7 +284,7 @@ def main():
                 st.warning(f"Still missing: {len(missing_now)} files")
 
     with st.sidebar.form("params"):
-        query = st.text_area("Query", value="methods to fix a fracture", height=120)
+        query = st.text_area("Query", value="", placeholder="Ask a question about the data", height=120)
         topk = st.slider("Top K", min_value=1, max_value=50, value=8)
         threshold = st.slider("Hybrid fuzzy threshold", min_value=0.0, max_value=1.0, value=0.05, step=0.01)
         collection = st.text_input("Qdrant collection", value="llm_engineering_chunks")
