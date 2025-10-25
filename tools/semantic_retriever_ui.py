@@ -53,7 +53,7 @@ def resolve_link_from_payload(payload, raw_docs):
     return None
 
 
-def run_retrieval(query: str, topk: int, threshold: float, use_embeddings: bool = True, collection: str = "llm_engineering_chunks"):
+def run_retrieval(query: str, topk: int, threshold: float, use_embeddings: bool = True, collection: str = "llm_engineering_chunks", no_etl: bool = False, no_hybrid: bool = False):
     # lazy imports
     try:
         from sentence_transformers import SentenceTransformer
@@ -76,6 +76,31 @@ def run_retrieval(query: str, topk: int, threshold: float, use_embeddings: bool 
                 raw_docs = json.load(f)
             except Exception:
                 raw_docs = []
+    else:
+        if not no_etl:
+            # Try to generate/load raw_documents programmatically using the project's ETL function
+            try:
+                from tools.run_s3_etl import generate_raw_documents
+
+                docs = generate_raw_documents()
+                if isinstance(docs, list):
+                    raw_docs = docs
+                else:
+                    raw_docs = docs or []
+                # attempt to persist the file for other tools
+                try:
+                    with open(raw_docs_path, "w", encoding="utf-8") as f:
+                        json.dump(raw_docs, f, ensure_ascii=False, indent=2)
+                except Exception:
+                    pass
+                st.info(f"Loaded {len(raw_docs)} raw documents via generate_raw_documents()")
+            except Exception as e:
+                st.warning(
+                    "raw_documents.json not found and generate_raw_documents() failed; continuing without raw doc link resolution."
+                )
+                st.debug(str(e))
+        else:
+            st.info("Skipping ETL generation of raw documents (no_etl=True)")
 
     hybrid_path = Path("data/artifacts/hybrid_summaries.jsonl")
     hybrid_list = []
@@ -98,6 +123,27 @@ def run_retrieval(query: str, topk: int, threshold: float, use_embeddings: bool 
                         hybrid_map_by_source_file[str(sf)] = rec
         except Exception:
             hybrid_list = []
+    else:
+        if not no_hybrid:
+            # generate hybrid dataset programmatically (so the UI can work without a prior step)
+            try:
+                from tools.create_hybrid_dataset import generate_hybrid_dataset
+
+                hybrid_list = generate_hybrid_dataset()
+                # populate lookup maps
+                for rec in hybrid_list:
+                    mid = rec.get("matched_raw_doc_id")
+                    sf = rec.get("source_file")
+                    if mid:
+                        hybrid_map_by_id[str(mid)] = rec
+                    if sf:
+                        hybrid_map_by_source_file[str(sf)] = rec
+                st.info(f"Generated {len(hybrid_list)} hybrid records via create_hybrid_dataset.generate_hybrid_dataset()")
+            except Exception as e:
+                st.warning("hybrid_summaries.jsonl not found and generation failed; continuing without hybrid summaries")
+                st.debug(str(e))
+        else:
+            st.info("Skipping hybrid generation (no_hybrid=True)")
 
     # map raw docs link->id
     link_to_raw_id = {}
@@ -189,13 +235,15 @@ def main():
         topk = st.slider("Top K", min_value=1, max_value=50, value=8)
         threshold = st.slider("Hybrid fuzzy threshold", min_value=0.0, max_value=1.0, value=0.05, step=0.01)
         collection = st.text_input("Qdrant collection", value="llm_engineering_chunks")
+        run_etl = st.checkbox("Run ETL if missing", value=True, help="If checked the UI will run the project's ETL to generate raw_documents.json when it's missing")
+        run_hybrid = st.checkbox("Generate hybrid if missing", value=True, help="If checked the UI will generate hybrid_summaries.jsonl when it's missing")
         out_json = st.text_input("Output JSON path", value="data/artifacts/semantic_results_ui.json")
         out_csv = st.text_input("Output CSV path", value="data/artifacts/semantic_results_ui.csv")
         run = st.form_submit_button("Run retrieval")
 
     if run:
         with st.spinner("Running retrieval..."):
-            rows = run_retrieval(query=query, topk=topk, threshold=threshold, collection=collection)
+            rows = run_retrieval(query=query, topk=topk, threshold=threshold, collection=collection, no_etl=not run_etl, no_hybrid=not run_hybrid)
 
         st.success(f"Retrieved {len(rows)} results")
 

@@ -38,6 +38,7 @@ def main():
     p.add_argument("--output-json", help="Path to write JSON results")
     p.add_argument("--hybrid-fuzzy-threshold", type=float, default=0.05, help="If no direct hybrid match, attach best hybrid summary with score >= threshold (token-overlap). Set 0 to disable")
     p.add_argument("--hybrid-fuzzy-method", choices=["overlap"], default="overlap", help="Fuzzy matching method to use (currently only 'overlap')")
+    p.add_argument("--no-etl", action="store_true", help="Do not run ETL if raw_documents.json is missing")
     args = p.parse_args()
 
     try:
@@ -56,8 +57,29 @@ def main():
 
     raw_docs_path = Path("data/artifacts/raw_documents.json")
     raw_docs = []
+
+    # Prefer reading the persisted artifacts file if it exists
     if raw_docs_path.exists():
         raw_docs = load_json(raw_docs_path)
+    else:
+        if args.no_etl:
+            print("raw_documents.json not found and --no-etl set; continuing without raw documents", file=sys.stderr)
+            raw_docs = []
+        else:
+            # If the artifacts file is missing, call the canonical ETL helper which
+            # encapsulates the S3 / step / pipeline logic so we don't duplicate code here.
+            try:
+                from tools.run_s3_etl import generate_raw_documents
+
+                docs = generate_raw_documents()
+                if isinstance(docs, list):
+                    raw_docs = docs
+                else:
+                    raw_docs = docs or []
+                print(f"Loaded {len(raw_docs)} documents from generate_raw_documents()")
+            except Exception as e:
+                print("Failed to run generate_raw_documents(); continuing with empty raw_docs", file=sys.stderr)
+                print(e, file=sys.stderr)
     # build mapping link -> id for raw docs
     link_to_raw_id = {}
     for d in raw_docs:

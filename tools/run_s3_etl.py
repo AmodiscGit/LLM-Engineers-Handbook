@@ -28,19 +28,25 @@ def _is_json_serializable(obj):
         return False
 
 
-if __name__ == "__main__":
+def generate_raw_documents(out_dir: str = "data/artifacts", configs_path: str = "configs/s3_etl.yaml", env_file: str = ".env.s3"):
+    """Run the ETL logic and return a list of documents (also writes raw_documents.json).
+
+    This function encapsulates the behavior previously implemented in the script's
+    __main__ block so other modules can import and reuse it programmatically.
+    Returns the serialized documents written to disk (list or other serializable type).
+    """
     # Load AWS credentials for S3 ETL from .env.s3 only
-    load_dotenv(".env.s3")
+    load_dotenv(env_file)
     aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
     aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 
     # Load bucket_name and prefix from configs/s3_etl.yaml
-    with open("configs/s3_etl.yaml", "r") as f:
+    with open(configs_path, "r") as f:
         config = yaml.safe_load(f)
     bucket_name = config.get("bucket_name", "")
     prefix = config.get("prefix", "")
 
-    out_dir = os.path.join("data", "artifacts")
+    out_dir = os.path.join(out_dir)
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(out_dir, "raw_documents.json")
 
@@ -175,3 +181,5 @@ if __name__ == "__main__":
         with open(out_path, "w", encoding="utf-8") as f:
             json.dump(documents_to_write, f, ensure_ascii=False, indent=2)
         print(f"Saved ETL output to {out_path}")
+
+    return documents_to_write

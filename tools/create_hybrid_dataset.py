@@ -68,11 +68,34 @@ def find_best_match(summary_text, docs):
 
 
 def main():
+    # default paths
     summaries_path = "output/all_cleaned_summaries.json"
     cleaned_docs_path = "data/artifacts/cleaned_documents.json"
     raw_docs_path = "data/artifacts/raw_documents.json"
     out_jsonl = "data/artifacts/hybrid_summaries.jsonl"
     report_path = "data/artifacts/hybrid_summaries_report.json"
+
+    return generate_hybrid_dataset(
+        summaries_path=summaries_path,
+        cleaned_docs_path=cleaned_docs_path,
+        raw_docs_path=raw_docs_path,
+        out_jsonl=out_jsonl,
+        report_path=report_path,
+    )
+
+
+def generate_hybrid_dataset(
+    summaries_path: str = "output/all_cleaned_summaries.json",
+    cleaned_docs_path: str = "data/artifacts/cleaned_documents.json",
+    raw_docs_path: str = "data/artifacts/raw_documents.json",
+    out_jsonl: str = "data/artifacts/hybrid_summaries.jsonl",
+    report_path: str = "data/artifacts/hybrid_summaries_report.json",
+):
+    """Create the hybrid dataset and return the list of records.
+
+    The function writes `out_jsonl` and `report_path` like the original script.
+    Returns: list of record dicts (the same objects written to the jsonl).
+    """
 
     if not os.path.exists(summaries_path):
         raise SystemExit(f"Summaries file not found: {summaries_path}")
@@ -148,6 +171,8 @@ def main():
 
     print("Done. Report:")
     print(json.dumps(report, indent=2))
+
+    return results
 
 
 if __name__ == "__main__":
