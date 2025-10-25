@@ -17,6 +17,8 @@ import json
 from pathlib import Path
 import csv
 import math
+import subprocess
+import shlex
 
 
 def token_overlap_score(a: str, b: str) -> float:
@@ -229,6 +231,57 @@ def save_csv(path: Path, rows):
 def main():
     st.set_page_config(page_title="Semantic Retriever UI", layout="wide")
     st.title("Semantic Retriever (Qdrant) — UI")
+
+    # Artifacts we care about
+    ARTIFACT_PATHS = [
+        "output/all_cleaned_summaries.json",
+        "data/artifacts/cleaned_documents.json",
+        "data/artifacts/raw_documents.json",
+        "data/artifacts/hybrid_summaries.jsonl",
+        "data/artifacts/hybrid_summaries_report.json",
+    ]
+
+    def check_artifacts():
+        missing = []
+        for p in ARTIFACT_PATHS:
+            if not Path(p).exists():
+                missing.append(p)
+        return missing
+
+    def run_full_workflow():
+        # Run the programmatic artifact generator via poetry to ensure environment is correct.
+        # This uses the in-repo generator which calls the ETL/summarization/merge/clean/hybrid helpers.
+        cmd = "poetry run python tools/generate_artifacts.py"
+        try:
+            # Use shell to allow poetry invocation; capture output
+            proc = subprocess.run(cmd, shell=True, check=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+            return proc.returncode, proc.stdout
+        except Exception as e:
+            return 1, str(e)
+
+    with st.sidebar.expander("Artifacts / regenerate", expanded=False):
+        missing_now = check_artifacts()
+        if not missing_now:
+            st.success("All required artifacts present")
+        else:
+            st.warning(f"Missing {len(missing_now)} artifact(s):")
+            for m in missing_now:
+                st.write(f"- {m}")
+
+        if st.button("Regenerate artifacts (run full workflow)"):
+            with st.spinner("Running full workflow (this may take a while)..."):
+                code, output = run_full_workflow()
+            if code == 0:
+                st.success("Full workflow completed (exit 0). Re-checking artifacts...")
+            else:
+                st.error(f"Full workflow finished with exit code {code}")
+            # show output and re-check
+            st.text_area("Workflow output (stdout/stderr)", output, height=300)
+            missing_now = check_artifacts()
+            if not missing_now:
+                st.success("Artifacts now present")
+            else:
+                st.warning(f"Still missing: {len(missing_now)} files")
 
     with st.sidebar.form("params"):
         query = st.text_area("Query", value="methods to fix a fracture", height=120)

@@ -110,6 +110,22 @@ def generate_hybrid_dataset(
                 break
 
     docs = []
+    # If cleaned docs are missing, run the filter-and-reindex step to produce them
+    if not os.path.exists(cleaned_docs_path):
+        try:
+            print(f"cleaned_docs_path {cleaned_docs_path} not found; generating it via tools.filter_and_reindex.generate_cleaned_documents()...")
+            # Prefer importing the module and calling the lightweight helper to avoid running the expensive pipeline
+            from tools.filter_and_reindex import generate_cleaned_documents
+
+            try:
+                generate_cleaned_documents(raw_path=raw_docs_path, summaries_path=summaries_path, out_path=cleaned_docs_path)
+            except Exception:
+                # fall back to the full script if helper fails
+                import runpy
+
+                runpy.run_path(os.path.join("tools", "filter_and_reindex.py"), run_name="__main__")
+        except Exception as e:
+            print(f"Failed to generate cleaned documents via filter_and_reindex: {e}")
     for p in (cleaned_docs_path, raw_docs_path):
         if os.path.exists(p):
             data = load_json(p)

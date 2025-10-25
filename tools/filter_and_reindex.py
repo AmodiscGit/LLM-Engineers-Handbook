@@ -62,11 +62,12 @@ def write_cleaned(docs: List[dict], out_path: str):
         json.dump(docs, f, ensure_ascii=False, indent=2)
 
 
-def main():
-    raw_path = 'data/artifacts/raw_documents.json'
-    summaries_path = 'output/all_cleaned_summaries.json'
-    out_path = 'data/artifacts/cleaned_documents.json'
+def generate_cleaned_documents(raw_path: str = 'data/artifacts/raw_documents.json', summaries_path: str = 'output/all_cleaned_summaries.json', out_path: str = 'data/artifacts/cleaned_documents.json') -> list:
+    """Generate cleaned_documents.json from raw artifacts and optional summaries.
 
+    This helper only writes the cleaned JSON and returns the cleaned list. It does
+    NOT run the downstream feature-engineering pipeline (which can be expensive).
+    """
     raw = load_raw(raw_path)
     cleaned = []
     for d in raw:
@@ -87,8 +88,17 @@ def main():
                 rec = {'id': s.get('index') or None, 'content': text, 'link': s.get('source_file')}
                 cleaned.append(rec)
 
-    print(f'Raw docs: {len(raw)}, Cleaned docs: {len(cleaned)}')
     write_cleaned(cleaned, out_path)
+    return cleaned
+
+
+def main():
+    raw_path = 'data/artifacts/raw_documents.json'
+    summaries_path = 'output/all_cleaned_summaries.json'
+    out_path = 'data/artifacts/cleaned_documents.json'
+    # Generate cleaned documents and then run the pipeline to re-index
+    cleaned = generate_cleaned_documents(raw_path=raw_path, summaries_path=summaries_path, out_path=out_path)
+    print(f'Raw docs: {len(load_raw(raw_path))}, Cleaned docs: {len(cleaned)}')
 
     # Run the feature-engineering pipeline with no-cache to re-index cleaned docs
     print('Running feature-engineering pipeline (no-cache) to re-index cleaned docs...')
@@ -96,7 +106,7 @@ def main():
     subprocess.run(cmd, check=True)
 
     print('Re-index complete. You can verify with the Streamlit UI or run sample queries.')
-
+    return cleaned
 
 if __name__ == '__main__':
     main()
