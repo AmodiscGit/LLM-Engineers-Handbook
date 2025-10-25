@@ -1,0 +1,107 @@
+[
+  {
+    "rank": 1,
+    "id": "c283b540-273f-4e50-be9c-c8f21d4509d2",
+    "score": 0.44955045,
+    "link": "s3://manna-public/sample-text-files/LICENSE.txt",
+    "summary": "The document is a copyright notice from 2015 that grants permission to use, copy, modify, and distribute the software under certain conditions, specifically requiring the inclusion of the copyright and permission notice in all copies. It states that the software is provided \"as is,\" without any warranties, and the author is not liable for any damages resulting from its use.",
+    "summary_match_score": 0.5281426177627938,
+    "snippet": "Copyright (c) 2015, Contributors\n\nPermission to use, copy, modify, and/or distribute this software\nfor any purpose with or without fee is hereby granted, provided\nthat the above copyright notice and this permission notice\nappear in all copies.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\" AND THE AUTHOR DISCLAIMS ALL WARRANTIES\nWITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES\nOF MERCHANTABILITY A...",
+    "payload": {
+      "content": "Copyright (c) 2015, Contributors\n\nPermission to use, copy, modify, and/or distribute this software\nfor any purpose with or without fee is hereby granted, provided\nthat the above copyright notice and this permission notice\nappear in all copies.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\" AND THE AUTHOR DISCLAIMS ALL WARRANTIES\nWITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES\nOF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE\nLIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES\nOR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,\nWHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION,\nARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.",
+      "source_file": null,
+      "source_link": "s3://manna-public/sample-text-files/LICENSE.txt",
+      "chunk_index": 7
+    }
+  },
+  {
+    "rank": 2,
+    "id": "43d135da-9b7e-4e1e-b91f-c6f00aa39a25",
+    "score": 0.39726263,
+    "link": "s3://manna-public/sample-text-files/licenseHeader.txt",
+    "summary": "The document is a copyright notice from Facebook, Inc. and its affiliates, indicating that the source code is licensed under the MIT license. It also mentions that the relevant license details can be found in the LICENSE file located in the root directory of the source tree.",
+    "summary_match_score": 1.0,
+    "snippet": "/**\n * Copyright (c) Facebook, Inc. and its affiliates.\n *\n * This source code is licensed under the MIT license found in the\n * LICENSE file in the root directory of this source tree.\n */",
+    "payload": {
+      "content": "/**\n * Copyright (c) Facebook, Inc. and its affiliates.\n *\n * This source code is licensed under the MIT license found in the\n * LICENSE file in the root directory of this source tree.\n */",
+      "source_file": null,
+      "source_link": "s3://manna-public/sample-text-files/licenseHeader.txt",
+      "chunk_index": 66
+    }
+  },
+  {
+    "rank": 3,
+    "id": "417fe88c-4c1b-4d5b-8f7f-ce5e34ff74b2",
+    "score": 0.35518658,
+    "link": "s3://manna-public/sample-text-files/main.js.LICENSE.txt",
+    "summary": "The document contains a series of copyright notices and licensing information for various software libraries and components. Key points include:\n\n1. **Object-Assign**: Copyrighted by Sindre Sorhus, licensed under MIT.\n2. **LocalForage**: An offline storage library, version 1.10.0, developed by Mozilla, licensed under Apache License 2.0.\n3. **Classnames**: Copyrighted by Jed Watson, also licensed under MIT.\n4. **Buffer Detection**: A utility for determining if an object is a Buffer, authored by Feross Aboukhadijeh, licensed under MIT.\n5. **Adobe Confidential**: A notice from Adobe Systems regarding proprietary information and copyright protection.\n6. **Microsoft Software**: Multiple notices from Microsoft, granting permission for use and distribution under various licenses, including Apache License 2.0 and disclaiming warranties.\n7. **Punycode**: A library version 1.4.1 by Mathias Bynens, with a brief mention.\n8. **Regenerator Runtime**: A library by Facebook, licensed under MIT.\n9. **React**: Multiple versions of React components (such as React, React-DOM, and React-Scheduler) are included, all licensed",
+    "summary_match_score": 1.0,
+    "snippet": "on.min.js\n *\n * Copyright (c) Facebook, Inc. and its affiliates.\n *\n * This source code is licensed under the MIT license found in the\n * LICENSE file in the root directory of this source tree.\n */\n\n/** @license React v16.14.0\n * react.production.min.js\n *\n * Copyright (c) Facebook, Inc. and its affiliates.\n *\n * This source code is licensed under the MIT license found in the\n * LICENSE file in th...",
+    "payload": {
+      "content": "on.min.js\n *\n * Copyright (c) Facebook, Inc. and its affiliates.\n *\n * This source code is licensed under the MIT license found in the\n * LICENSE file in the root directory of this source tree.\n */\n\n/** @license React v16.14.0\n * react.production.min.js\n *\n * Copyright (c) Facebook, Inc. and its affiliates.\n *\n * This source code is licensed under the MIT license found in the\n * LICENSE file in the root directory of this source tree.\n */",
+      "source_file": null,
+      "source_link": "s3://manna-public/sample-text-files/main.js.LICENSE.txt",
+      "chunk_index": 73
+    }
+  },
+  {
+    "rank": 4,
+    "id": "8f9a45e6-4bfa-4813-b042-d15b679a8c6e",
+    "score": 0.3529339,
+    "link": "s3://manna-public/publicdemo/build/static/js/main.b23ec8da.js.LICENSE.txt",
+    "summary": "The document is a copyright notice from Facebook, Inc. and its affiliates, indicating that the source code is licensed under the MIT license. It also mentions that the relevant license details can be found in the LICENSE file located in the root directory of the source tree.",
+    "summary_match_score": 0.596420051979227,
+    "snippet": "Remix Software Inc.\n *\n * This source code is licensed under the MIT license found in the\n * LICENSE.md file in the root directory of this source tree.\n *\n * @license MIT\n */\n\n/**\n * React Router v6.24.0\n *\n * Copyright (c) Remix Software Inc.\n *\n * This source code is licensed under the MIT license found in the\n * LICENSE.md file in the root directory of this source tree.\n *\n * @license MIT\n */",
+    "payload": {
+      "content": "Remix Software Inc.\n *\n * This source code is licensed under the MIT license found in the\n * LICENSE.md file in the root directory of this source tree.\n *\n * @license MIT\n */\n\n/**\n * React Router v6.24.0\n *\n * Copyright (c) Remix Software Inc.\n *\n * This source code is licensed under the MIT license found in the\n * LICENSE.md file in the root directory of this source tree.\n *\n * @license MIT\n */",
+      "source_file": null,
+      "source_link": "s3://manna-public/publicdemo/build/static/js/main.b23ec8da.js.LICENSE.txt",
+      "chunk_index": 6
+    }
+  },
+  {
+    "rank": 5,
+    "id": "571afbb8-b791-5d1b-a54e-2b6ac7fd520b",
+    "score": 0.16836548,
+    "link": "s3://manna-public/sample-text-files/MCQs .docx",
+    "summary": "The document presents a series of clinical scenarios involving injuries in infants, focusing on the identification of potential non-accidental trauma (NAT). \n\n**Question 1** describes a 7-month-old infant with a spiral humeral fracture. The caregiver claims the injury occurred while the baby was rolling on the bed. The most appropriate response is to recognize the injury as suspicious for abuse and notify safeguarding services (Option C). This is because spiral fractures in non-ambulatory infants typically require significant force, raising concerns of non-accidental trauma. Other options, such as reassuring the caregiver or simply referring for orthopedic treatment, fail to address the safeguarding responsibilities.\n\n**Question 2** asks which injury pattern is most suggestive of non-accidental injury in a child. The correct answer is bilateral metaphyseal corner fractures (Option B), which are strong indicators of abuse, particularly in non-ambulatory infants. Other options, like linear forehead bruises or toddler's fractures, are more consistent with accidental injuries.\n\n**Question 3** introduces a 6-month-old infant with seizures, a CT scan showing subdural hematoma, and fundoscopy revealing bilateral retinal hemorrhages. While the document does not provide the answer or explanation for this scenario, it suggests a concern",
+    "summary_match_score": 1.0,
+    "snippet": "The document at the provided URL is about the Robots Exclusion Protocol, commonly known as \"robots.txt.\" It explains how websites can communicate with web crawlers and bots regarding which parts of the site should not be accessed or indexed. The example given indicates that all user agents (crawlers) are allowed to access all parts of the site, as there are no disallowed paths specified. This mean...",
+    "payload": {
+      "content": "The document at the provided URL is about the Robots Exclusion Protocol, commonly known as \"robots.txt.\" It explains how websites can communicate with web crawlers and bots regarding which parts of the site should not be accessed or indexed. The example given indicates that all user agents (crawlers) are allowed to access all parts of the site, as there are no disallowed paths specified. This means that the website does not impose any restrictions on web crawlers.",
+      "source_file": null,
+      "source_link": "s3://manna-public/sample-text-files/MCQs .docx",
+      "chunk_index": 221
+    }
+  },
+  {
+    "rank": 6,
+    "id": "265cef66-654e-49b9-b82a-57d0717a30f1",
+    "score": 0.13206637,
+    "link": "s3://manna-public/publicdemo/build/robots.txt",
+    "summary": "The document at the provided URL is about the Robots Exclusion Protocol, commonly known as \"robots.txt.\" It explains how websites can communicate with web crawlers and bots regarding which parts of the site should not be accessed or indexed. The example given indicates that all user agents (crawlers) are allowed to access all parts of the site, as there are no disallowed paths specified. This means that the website does not impose any restrictions on web crawlers.",
+    "summary_match_score": 0.05,
+    "snippet": "# https://www.robotstxt.org/robotstxt.html\nUser-agent: *\nDisallow:",
+    "payload": {
+      "content": "# https://www.robotstxt.org/robotstxt.html\nUser-agent: *\nDisallow:",
+      "source_file": null,
+      "source_link": "s3://manna-public/publicdemo/build/robots.txt",
+      "chunk_index": 1
+    }
+  },
+  {
+    "rank": 7,
+    "id": "8ccd3791-8327-44f8-8460-34f375840cb0",
+    "score": 0.025738787,
+    "link": "s3://manna-public/sample-text-files/MCQs .docx",
+    "summary": "The document presents a series of clinical scenarios involving injuries in infants, focusing on the identification of potential non-accidental trauma (NAT). \n\n**Question 1** describes a 7-month-old infant with a spiral humeral fracture. The caregiver claims the injury occurred while the baby was rolling on the bed. The most appropriate response is to recognize the injury as suspicious for abuse and notify safeguarding services (Option C). This is because spiral fractures in non-ambulatory infants typically require significant force, raising concerns of non-accidental trauma. Other options, such as reassuring the caregiver or simply referring for orthopedic treatment, fail to address the safeguarding responsibilities.\n\n**Question 2** asks which injury pattern is most suggestive of non-accidental injury in a child. The correct answer is bilateral metaphyseal corner fractures (Option B), which are strong indicators of abuse, particularly in non-ambulatory infants. Other options, like linear forehead bruises or toddler's fractures, are more consistent with accidental injuries.\n\n**Question 3** introduces a 6-month-old infant with seizures, a CT scan showing subdural hematoma, and fundoscopy revealing bilateral retinal hemorrhages. While the document does not provide the answer or explanation for this scenario, it suggests a concern",
+    "summary_match_score": 1.0,
+    "snippet": "hat mimics physical abuse. Identifying or excluding bleeding disorders is critical to avoid misdiagnosing abuse and ensure appropriate treatment.\n\nWhy the other options are less relevant:\nA. LFTs (Liver function tests):\nMay be abnormal in liver disease which can cause coagulopathy but are not first-line for bruising.\nC. Renal function tests:\nNot directly related to bruising or bleeding tendencies....",
+    "payload": {
+      "content": "hat mimics physical abuse. Identifying or excluding bleeding disorders is critical to avoid misdiagnosing abuse and ensure appropriate treatment.\n\nWhy the other options are less relevant:\nA. LFTs (Liver function tests):\nMay be abnormal in liver disease which can cause coagulopathy but are not first-line for bruising.\nC. Renal function tests:\nNot directly related to bruising or bleeding tendencies.\nD. Blood glucose:\nHypoglycaemia does not cause bruising.\nE. CRP (C-reactive protein):\nMarker of inflammation/infection; not related to bleeding or bruising.",
+      "source_file": null,
+      "source_link": "s3://manna-public/sample-text-files/MCQs .docx",
+      "chunk_index": 65
+    }
+  }
+]

@@ -50,7 +50,6 @@ transformers = ">=4.40"
 accelerate = "^1.11.0"
 tokenizers = "^0.22.1"
 safetensors = "^0.6.2"
-streamlit = "^1.50.0"
 
 
 [tool.poetry.group.dev.dependencies]

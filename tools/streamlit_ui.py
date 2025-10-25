@@ -212,13 +212,40 @@ st.set_page_config(page_title="S3 Explorer & QA", layout="wide")
 
 st.title("S3 Explorer & QA")
 
-query = st.text_input("Ask a question about the S3 buckets:", "What are the methods to fix a fracture?")
+
+def _do_search_callback():
+    """Callback used by the query text_input to auto-run a search when the query changes."""
+    try:
+        q = st.session_state.get("query_input", "")
+        method = st.session_state.get("search_method", "keyword_fallback")
+        k = int(st.session_state.get("search_k", 5))
+        if method == "vector_retriever":
+            try:
+                results = ui_helpers.try_retriever(q, k=k)
+            except Exception:
+                results = ui_helpers.fallback_keyword_search(q, max_results=k)
+        else:
+            results = ui_helpers.fallback_keyword_search(q, max_results=k)
+
+        st.session_state["results"] = results
+    except Exception as e:
+        st.error(f"Search callback failed: {e}")
+
+
+query = st.text_input("Ask a question about the S3 buckets:", "What are the methods to fix a fracture?", key="query_input", on_change=_do_search_callback)
 col1, col2 = st.columns([1, 2])
 
 with col1:
     st.header("Search method")
-    method = st.radio("Use:", ("vector_retriever", "keyword_fallback"))
-    k = st.slider("Number of results", min_value=1, max_value=10, value=5)
+    # initialize session-state keys used by the auto-search callback
+    if "search_method" not in st.session_state:
+        st.session_state["search_method"] = "keyword_fallback"
+    if "search_k" not in st.session_state:
+        st.session_state["search_k"] = 5
+
+    # bind widgets to session state so changes trigger the search callback
+    method = st.radio("Use:", ("vector_retriever", "keyword_fallback"), key="search_method", on_change=_do_search_callback)
+    k = st.slider("Number of results", min_value=1, max_value=10, value=st.session_state.get("search_k", 5), key="search_k", on_change=_do_search_callback)
     # Score filter controls: allow users to show only results above a threshold
     if "score_filter_threshold" not in st.session_state:
         st.session_state["score_filter_threshold"] = 35
@@ -472,7 +499,8 @@ with col2:
             # optional raw payload debug view
             if st.session_state.get("show_raw_payloads", False):
                 exp_key = f"raw_expander_{rid}"
-                with st.expander("Show raw payload", expanded=False, key=exp_key):
+                # NOTE: some Streamlit versions do not accept a `key` arg for expander
+                with st.expander("Show raw payload", expanded=False):
                     try:
                         import json as _json
 
