@@ -118,7 +118,7 @@ def main():
     args = parser.parse_args()
 
     # 1) Run ETL to fetch raw documents
-    run_cmd("poetry run python tools/run_s3_etl.py")
+    run_cmd("poetry run python tools/workflow/run_s3_etl.py")
 
     # 2) Run summarization ETL to produce per-document summaries
     run_cmd("poetry run python tools/run_s3_summarization_etl.py")
@@ -130,7 +130,7 @@ def main():
         sys.exit(1)
 
     # 4) Create hybrid dataset (pair raw -> summary)
-    run_cmd("python tools/create_hybrid_dataset.py")
+    run_cmd("python tools/workflow/create_hybrid_dataset.py")
 
     # 5) Produce cleaned training JSONL
     training_path, kept, total = produce_training_jsonl()

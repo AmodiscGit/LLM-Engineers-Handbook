@@ -82,7 +82,7 @@ def run_retrieval(query: str, topk: int, threshold: float, use_embeddings: bool 
         if not no_etl:
             # Try to generate/load raw_documents programmatically using the project's ETL function
             try:
-                from tools.run_s3_etl import generate_raw_documents
+                from tools.workflow.run_s3_etl import generate_raw_documents
 
                 docs = generate_raw_documents()
                 if isinstance(docs, list):
@@ -129,7 +129,7 @@ def run_retrieval(query: str, topk: int, threshold: float, use_embeddings: bool 
         if not no_hybrid:
             # generate hybrid dataset programmatically (so the UI can work without a prior step)
             try:
-                from tools.create_hybrid_dataset import generate_hybrid_dataset
+                from tools.workflow.create_hybrid_dataset import generate_hybrid_dataset
 
                 hybrid_list = generate_hybrid_dataset()
                 # populate lookup maps
@@ -248,12 +248,42 @@ def main():
                 missing.append(p)
         return missing
 
-    def run_full_workflow():
-        # Run the programmatic artifact generator via poetry to ensure environment is correct.
-        # This uses the in-repo generator which calls the ETL/summarization/merge/clean/hybrid helpers.
-        cmd = "poetry run python tools/generate_artifacts.py"
+    def run_full_workflow(in_process: bool = True):
+        # Prefer running the in-repo generator in-process for faster feedback and to avoid
+        # an extra subprocess; fall back to the poetry subprocess if import fails.
+        # If requested, attempt an in-process run which is faster and avoids a shell/Poetry subprocess.
+        if in_process:
+            try:
+                # capture stdout/stderr
+                import io
+                import contextlib
+                import traceback
+
+                buf = io.StringIO()
+                try:
+                    # import the generator from the workflow package
+                    from tools.workflow import generate_artifacts
+                    with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(buf):
+                        try:
+                            generate_artifacts.main()
+                            return 0, buf.getvalue()
+                        except SystemExit as se:
+                            # generator may call sys.exit()
+                            code = se.code if isinstance(se.code, int) else 0
+                            return code, buf.getvalue()
+                        except Exception:
+                            traceback.print_exc(file=buf)
+                            return 1, buf.getvalue()
+                except Exception as imp_e:
+                    buf.write(f"In-process run failed: {imp_e}\n")
+                    buf.write("Falling back to subprocess 'poetry run python tools/workflow/generate_artifacts.py'\n")
+            except Exception:
+                # if capturing machinery fails, fall back to plain subprocess
+                pass
+
+        # fallback or explicit subprocess run: run via poetry subprocess
+        cmd = "poetry run python tools/workflow/generate_artifacts.py"
         try:
-            # Use shell to allow poetry invocation; capture output
             proc = subprocess.run(cmd, shell=True, check=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
             return proc.returncode, proc.stdout
         except Exception as e:
@@ -268,9 +298,12 @@ def main():
             for m in missing_now:
                 st.write(f"- {m}")
 
+        # Option: let the user choose whether to run the generator in-process or as a subprocess
+        run_in_process = st.checkbox("Run generator in-process (faster, uses current environment)", value=True, help="When checked the UI will import and call the in-repo generator directly. Uncheck to force running under 'poetry run' as a subprocess.")
+
         if st.button("Regenerate artifacts (run full workflow)"):
             with st.spinner("Running full workflow (this may take a while)..."):
-                code, output = run_full_workflow()
+                code, output = run_full_workflow(in_process=run_in_process)
             if code == 0:
                 st.success("Full workflow completed (exit 0). Re-checking artifacts...")
             else:

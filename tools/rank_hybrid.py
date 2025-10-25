@@ -99,8 +99,8 @@ def main():
 
     # create hybrid file if missing by invoking the existing script
     if not hybrid_path.exists():
-        print("Hybrid dataset not found; creating it using tools/create_hybrid_dataset.py...")
-        script = repo_root / "tools" / "create_hybrid_dataset.py"
+        print("Hybrid dataset not found; creating it using tools/workflow/create_hybrid_dataset.py...")
+        script = repo_root / "tools" / "workflow" / "create_hybrid_dataset.py"
         if not script.exists():
             print("create_hybrid_dataset.py not found. Cannot build hybrid dataset.", file=sys.stderr)
             sys.exit(1)

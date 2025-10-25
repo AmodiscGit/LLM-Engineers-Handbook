@@ -36,7 +36,7 @@ def prepare_dataset(hybrid_path="data/artifacts/hybrid_summaries.jsonl", out_pat
 def main():
     hybrid = "data/artifacts/hybrid_summaries.jsonl"
     if not os.path.exists(hybrid):
-        raise SystemExit("Hybrid dataset not found; run create_hybrid_dataset.py first")
+        raise SystemExit("Hybrid dataset not found; run tools/workflow/create_hybrid_dataset.py first")
 
     ds_path = prepare_dataset(hybrid)
 

@@ -1,3 +1,14 @@
+# Workflow helper: create_hybrid_dataset.py
+# Required files / artifacts:
+# - output/all_cleaned_summaries.json (input)
+# - data/artifacts/cleaned_documents.json (optional input)
+# - data/artifacts/raw_documents.json (input)
+# - writes: data/artifacts/hybrid_summaries.jsonl and data/artifacts/hybrid_summaries_report.json
+
+"""
+Moved from tools/create_hybrid_dataset.py into tools/workflow. This module creates
+hybrid summary pairs by matching cleaned summaries to raw docs.
+"""
 #!/usr/bin/env python3
 """Create a hybrid (source -> summary) dataset by pairing cleaned summaries
 with local raw/cleaned documents using simple heuristics.
@@ -113,7 +124,7 @@ def generate_hybrid_dataset(
     # If cleaned docs are missing, run the filter-and-reindex step to produce them
     if not os.path.exists(cleaned_docs_path):
         try:
-            print(f"cleaned_docs_path {cleaned_docs_path} not found; generating it via tools.filter_and_reindex.generate_cleaned_documents()...")
+            print(f"cleaned_docs_path {cleaned_docs_path} not found; generating it via tools.workflow.filter_and_reindex.generate_cleaned_documents()...")
             # Prefer importing the module and calling the lightweight helper to avoid running the expensive pipeline
             from tools.workflow.filter_and_reindex import generate_cleaned_documents
 
@@ -123,7 +134,7 @@ def generate_hybrid_dataset(
                 # fall back to the full script if helper fails
                 import runpy
 
-                runpy.run_path(os.path.join("tools", "filter_and_reindex.py"), run_name="__main__")
+                runpy.run_path(os.path.join("tools", "workflow", "filter_and_reindex.py"), run_name="__main__")
         except Exception as e:
             print(f"Failed to generate cleaned documents via filter_and_reindex: {e}")
     for p in (cleaned_docs_path, raw_docs_path):

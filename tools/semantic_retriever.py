@@ -69,7 +69,7 @@ def main():
             # If the artifacts file is missing, call the canonical ETL helper which
             # encapsulates the S3 / step / pipeline logic so we don't duplicate code here.
             try:
-                from tools.run_s3_etl import generate_raw_documents
+                from tools.workflow.run_s3_etl import generate_raw_documents
 
                 docs = generate_raw_documents()
                 if isinstance(docs, list):
