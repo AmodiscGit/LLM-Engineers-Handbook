@@ -4248,6 +4248,36 @@ pox = ">=0.3.4"
 ppft = ">=1.7.6.8"
 
 [[package]]
+name = "peft"
+version = "0.17.1"
+description = "Parameter-Efficient Fine-Tuning (PEFT)"
+optional = false
+python-versions = ">=3.9.0"
+groups = ["main"]
+files = [
+    {file = "peft-0.17.1-py3-none-any.whl", hash = "sha256:3d129d64def3d74779c32a080d2567e5f7b674e77d546e3585138216d903f99e"},
+    {file = "peft-0.17.1.tar.gz", hash = "sha256:e6002b42517976c290b3b8bbb9829a33dd5d470676b2dec7cb4df8501b77eb9f"},
+]
+
+[package.dependencies]
+accelerate = ">=0.21.0"
+huggingface_hub = ">=0.25.0"
+numpy = ">=1.17"
+packaging = ">=20.0"
+psutil = "*"
+pyyaml = "*"
+safetensors = "*"
+torch = ">=1.13.0"
+tqdm = "*"
+transformers = "*"
+
+[package.extras]
+dev = ["black", "black", "hf-doc-builder", "hf-doc-builder", "ruff (>=0.9.2,<0.10.0)"]
+docs-specific = ["black", "hf-doc-builder"]
+quality = ["black", "hf-doc-builder", "ruff (>=0.9.2,<0.10.0)"]
+test = ["black", "black", "datasets", "diffusers", "hf-doc-builder", "hf-doc-builder", "parameterized", "protobuf", "pytest", "pytest-cov", "pytest-xdist", "ruff (>=0.9.2,<0.10.0)", "scipy", "sentencepiece"]
+
+[[package]]
 name = "phonemizer"
 version = "3.3.0"
 description = "Simple text to phones converter for multiple languages"
@@ -7937,4 +7967,4 @@ test = ["big-O", "importlib-resources ; python_version < \"3.9\"", "jaraco.funct
 [metadata]
 lock-version = "2.1"
 python-versions = "~3.11"
-content-hash = "932083edf70afd49b4b6c41f5d1b447583ac18eab4d4e704c1e93f92937a5124"
+content-hash = "4be1cb3a26c0c4fc08e58f4d23d3f7b38cbf1642873f78d26dcf6778f55b01fb"
