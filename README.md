@@ -75,6 +75,83 @@ Test the model, then deploy it where you need it.
 Summary:
 This project is a production-grade template for building LLM-powered applications, from data collection to deployment. It’s flexible: you can use it for mock/demo purposes or adapt it to real, custom LLM projects for your own data and tasks.
 
+## Streamlit UI workflow — what happens when you interact with the UI
+
+This project includes a Streamlit-based user interface that helps you inspect artifacts, run the artifact generator, and perform provenance-backed RAG-style Q&A against documents stored in S3 (or exported locally). The section below explains, in plain English, the typical end-to-end flow from the Streamlit UI: which files and modules are invoked and which JSON artifacts are created or read at each step.
+
+High-level entry points
+- `tools/semantic_retriever_ui.py` — the main Streamlit UI used for semantic retrieval and artifact management. This is the screen you run when doing provenance-backed Q&A and regenerating artifacts.
+- `tools/streamlit_ui.py` — an alternate Streamlit UI present in the repo (some projects include multiple UIs). The explanation below focuses on `semantic_retriever_ui.py` which contains the artifact regeneration controls.
+
+Typical user actions and what happens (plain English)
+1. Start the UI
+   - Command (example): `poetry run streamlit run tools/semantic_retriever_ui.py --server.port 8503`
+   - The UI loads and attempts to read existing artifact files from the repository to display counts, sample records and enable retrieval.
+   - Files the UI reads (if present):
+     - `output/all_cleaned_summaries.json` — merged, cleaned summaries used to build the hybrid dataset and shown to users.
+     - `data/artifacts/raw_documents.json` — the raw documents produced by ETL from S3.
+     - `data/artifacts/cleaned_documents.json` — filtered/cleaned documents used as retrieval candidates.
+     - `data/artifacts/hybrid_summaries.jsonl` — the hybrid training/QA dataset (JSONL) pairing summaries and full context.
+     - `data/artifacts/hybrid_summaries_report.json` — a small metadata/report summarizing the hybrid generation.
+
+2. Nothing found or you want fresh data → press "Regenerate artifacts"
+   - The UI presents a safe control to regenerate artifacts. You can choose to run the generator in-process (faster, but runs inside Streamlit) or run it as an isolated subprocess (safer).
+   - The UI calls the generator located at `tools/workflow/generate_artifacts.py`. There is also a compatibility shim at `tools/generate_artifacts.py` which delegates to the workflow module.
+
+3. What the generator does (step-by-step)
+   - Step A — ETL (extract raw docs)
+     - Module: `tools/workflow/run_s3_etl.py`
+     - Action: fetches files from S3 (or local/source) and writes the raw export
+     - Output: `data/artifacts/raw_documents.json`
+
+   - Step B — Summarization / Export
+     - Module(s) attempted in order of preference:
+       1. ZenML pipeline: `pipelines.s3_summarization_etl_pipeline` (if configured)
+       2. Local summarizer: `steps/summarization/summarize_documents.py` (callable helper)
+       3. Direct OpenAI fallback loop (uses `OPENAI_API_KEY` from `.env`)
+     - Action: produce per-document summaries and export them
+     - Output: `output/summaries_{bucket}.json` (one file per bucket), then used for merging
+
+   - Step C — Merge + clean summaries
+     - Module: `tools/workflow/merge_and_clean_summaries.py` (or fallback merge logic inside the generator)
+     - Action: combine individual summary exports into a single, normalized list
+     - Output: `output/all_cleaned_summaries.json`
+
+   - Step D — Generate cleaned documents (filter / reindex)
+     - Module: `tools/workflow/filter_and_reindex.py`
+     - Action: combine `raw_documents.json` and `all_cleaned_summaries.json` to produce cleaned candidate documents suitable for retrieval and hybrid pairing
+     - Output: `data/artifacts/cleaned_documents.json`
+
+   - Step E — Build the hybrid dataset (pair summaries with context)
+     - Module: `tools/workflow/create_hybrid_dataset.py`
+     - Action: create the JSONL hybrid dataset used for training or QA evaluation and a small report
+     - Outputs:
+       - `data/artifacts/hybrid_summaries.jsonl`
+       - `data/artifacts/hybrid_summaries_report.json`
+
+4. After regeneration: UI reload and retrieval
+   - Once the generator finishes, the UI re-reads the artifact files listed above and updates counts, sample rows, and available provenance links.
+   - When you run a query in the UI, the retrieval / RAG code uses the artifact files and the vector database (e.g., Qdrant) to fetch candidates and produce provenance-backed answers. Retrieval logic is implemented in `tools/semantic_retriever.py` and the application-level RAG/inference lives under `llm_engineering/application` and `llm_engineering/inference` modules.
+
+Safety & flags
+- The generator supports flags to avoid implicit heavy work (useful from the CLI): `--skip-etl`, `--skip-summarize`, `--skip-merge`, `--skip-cleaned`, `--skip-hybrid`. These allow you to regenerate only the parts you need.
+- The UI offers an in-process vs subprocess toggle: in-process is quicker but will run inside Streamlit; the subprocess fallback runs `poetry run python tools/workflow/generate_artifacts.py` (or the compatibility shim `tools/generate_artifacts.py`) in a separate process to avoid crashing the UI.
+
+Where to look in code
+- UI: `tools/semantic_retriever_ui.py` (artifact controls, regenerate button, log capture)
+- Generator orchestration: `tools/workflow/generate_artifacts.py` (canonical generator)
+- ETL: `tools/workflow/run_s3_etl.py`
+- Summarization step: `steps/summarization/summarize_documents.py` and `pipelines/s3_summarization_etl_pipeline.py` (if present)
+- Merging: `tools/workflow/merge_and_clean_summaries.py`
+- Clean & filter: `tools/workflow/filter_and_reindex.py`
+- Hybrid build: `tools/workflow/create_hybrid_dataset.py`
+
+Notes and tips
+- Artifacts are overwritten by default. If you want to keep a copy, back up the `output/` and `data/artifacts/` folders before regeneration.
+- Ensure you have credentials for S3 and OpenAI set in your `.env` (or ZenML secret store) to enable ETL and fallback summarization.
+- If the ZenML pipeline is available and configured, the generator prefers it; otherwise the code falls back to the callable summarization step or a direct OpenAI loop.
+
+
 
 ## 🌟 Features
 
