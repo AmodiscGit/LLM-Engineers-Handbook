@@ -178,3 +178,4 @@ run_ids.txt
 configs/s3_etl.yaml
 *.yaml
 .env.s3
+/models/test-hf

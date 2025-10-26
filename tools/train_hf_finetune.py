@@ -125,23 +125,55 @@ def main():
     # Resize token embeddings if tokenizer was changed (pad token added)
     model.resize_token_embeddings(len(tokenizer))
 
-    # Enable evaluation if we have a validation dataset
-    evaluation_strategy = "epoch" if ds_proc_eval is not None else "no"
+    # Enable evaluation and save strategy depending on whether we have a validation dataset
+    if ds_proc_eval is not None:
+        evaluation_strategy = "epoch"
+        save_strategy = "epoch"
+        load_best = True
+    else:
+        evaluation_strategy = "no"
+        save_strategy = "no"
+        load_best = False
 
-    training_args = TrainingArguments(
-        output_dir=args.output,
-        num_train_epochs=args.epochs,
-        per_device_train_batch_size=args.batch_size,
-        save_strategy="epoch",
-        logging_strategy="epoch",
-        evaluation_strategy=evaluation_strategy,
-        remove_unused_columns=False,
-        fp16=False,
-        load_best_model_at_end=True if ds_proc_eval is not None else False,
-        metric_for_best_model="eval_loss",
-        greater_is_better=False,
-        save_total_limit=3,
-    )
+    # Build TrainingArguments kwargs dynamically to support older/newer transformers versions
+    import inspect
+
+    train_kwargs = {
+        "output_dir": args.output,
+        "num_train_epochs": args.epochs,
+        "per_device_train_batch_size": args.batch_size,
+        # prefer saving/eval per epoch when supported
+        "save_strategy": save_strategy,
+        "logging_strategy": "epoch",
+        "evaluation_strategy": evaluation_strategy,
+        "remove_unused_columns": False,
+        "fp16": False,
+        # best model handling
+        "load_best_model_at_end": load_best,
+        "metric_for_best_model": "eval_loss",
+        "greater_is_better": False,
+        "save_total_limit": 3,
+    }
+
+    # Filter kwargs to only those accepted by the installed transformers.TrainingArguments
+    try:
+        sig = inspect.signature(TrainingArguments)
+        accepted = set(sig.parameters.keys())
+        # If the installed transformers doesn't accept evaluation_strategy but does accept save_strategy
+        # we must avoid enabling load_best_model_at_end to prevent a mismatch error (eval=no vs save=epoch)
+        if "evaluation_strategy" not in accepted and train_kwargs.get("load_best_model_at_end"):
+            # disable load_best behavior when evaluation can't be enabled
+            train_kwargs["load_best_model_at_end"] = False
+            if "save_strategy" in accepted:
+                # prefer not to save per-epoch when eval is disabled to avoid mismatches
+                train_kwargs["save_strategy"] = "no"
+
+        filtered = {k: v for k, v in train_kwargs.items() if k in accepted}
+    except Exception:
+        # If signature inspection fails for any reason, fall back to using the original dict
+        filtered = train_kwargs
+
+    training_args = TrainingArguments(**filtered)
 
     trainer = Trainer(
         model=model,
@@ -151,10 +183,24 @@ def main():
         data_collator=data_collator,
     )
 
-    # Attach EarlyStopping if requested and we have an eval set
+    # Attach EarlyStopping if requested and evaluation is enabled
+    attach_early = False
     if args.early_stopping_patience and args.early_stopping_patience > 0 and ds_proc_eval is not None:
+        # Check whether the TrainingArguments actually enabled evaluation (some transformers versions may not accept eval args)
+        try:
+            es = getattr(training_args, "evaluation_strategy", None)
+            es_s = str(es).lower() if es is not None else "no"
+            if "no" not in es_s:
+                attach_early = True
+        except Exception:
+            attach_early = False
+
+    if attach_early:
         print(f"Attaching EarlyStoppingCallback with patience={args.early_stopping_patience}")
         trainer.add_callback(EarlyStoppingCallback(early_stopping_patience=args.early_stopping_patience))
+    else:
+        if args.early_stopping_patience and args.early_stopping_patience > 0:
+            print("EarlyStopping requested but evaluation is not enabled; skipping EarlyStopping attachment.")
 
     print("Starting training...")
     trainer.train()

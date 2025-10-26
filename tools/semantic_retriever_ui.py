@@ -22,6 +22,7 @@ import subprocess
 import shlex
 import datetime
 import os
+import signal
 
 
 def token_overlap_score(a: str, b: str) -> float:
@@ -515,6 +516,15 @@ def main():
                         proc = subprocess.Popen(cmd, shell=True, stdout=lf, stderr=lf, env=os.environ.copy())
                         st.success(f"Training started in background (pid={proc.pid}). Logs: {log_path}")
                         st.info("You can tail the log file to monitor progress: e.g. 'tail -f {log_path}'")
+                        # Persist the active training state so the UI can manage/abort it across reruns
+                        try:
+                            TRAINING_STATE_FILE = Path("logs/current_training.json")
+                            state = {"pid": int(proc.pid), "cmd": cmd, "log_path": str(log_path), "start_time": timestamp}
+                            with open(TRAINING_STATE_FILE, "w", encoding="utf-8") as sf:
+                                json.dump(state, sf)
+                        except Exception:
+                            # non-fatal; continue
+                            pass
                     except Exception as e:
                         st.error(f"Failed to start background training: {e}")
                 else:
@@ -528,11 +538,59 @@ def main():
                                 st.success("Training finished (exit 0)")
                             else:
                                 st.error(f"Training finished with exit code {proc.returncode}")
+                            # remove any stale training state file if present (foreground run finished)
+                            try:
+                                TRAINING_STATE_FILE = Path("logs/current_training.json")
+                                if TRAINING_STATE_FILE.exists():
+                                    TRAINING_STATE_FILE.unlink()
+                            except Exception:
+                                pass
                         except Exception as e:
                             st.error(f"Training run failed: {e}")
 
         # show existing logs
         st.markdown("---")
+        # Show active training job (if any) with an Abort button
+        try:
+            TRAINING_STATE_FILE = Path("logs/current_training.json")
+            if TRAINING_STATE_FILE.exists():
+                try:
+                    with open(TRAINING_STATE_FILE, "r", encoding="utf-8") as sf:
+                        tstate = json.load(sf)
+                    pid = int(tstate.get("pid"))
+                    tcmd = tstate.get("cmd")
+                    tlog = Path(tstate.get("log_path")) if tstate.get("log_path") else None
+                    st.markdown("### Active training job")
+                    st.write(f"PID: {pid}")
+                    st.write(f"Command: `{tcmd}`")
+                    if tlog and tlog.exists():
+                        st.write(f"Log: {tlog} — {tlog.stat().st_size} bytes — last modified {datetime.datetime.fromtimestamp(tlog.stat().st_mtime)}")
+                    else:
+                        st.write(f"Log: {tlog}")
+
+                    if st.button("Abort training", key="abort_training"):
+                        try:
+                            os.kill(pid, signal.SIGTERM)
+                            st.success(f"Sent SIGTERM to pid {pid}")
+                            # remove state file
+                            try:
+                                TRAINING_STATE_FILE.unlink()
+                            except Exception:
+                                pass
+                        except ProcessLookupError:
+                            st.warning("Process not found — it may have already exited. Removing stale state file.")
+                            try:
+                                TRAINING_STATE_FILE.unlink()
+                            except Exception:
+                                pass
+                        except PermissionError:
+                            st.error("Permission denied when attempting to kill the process.")
+                        except Exception as e:
+                            st.error(f"Failed to abort training: {e}")
+                except Exception:
+                    st.warning("Failed to read current training state file; it may be corrupt.")
+        except Exception:
+            pass
         st.markdown("Recent training logs:")
         try:
             logs = sorted(Path("logs").glob("training_*.log"), key=lambda p: p.stat().st_mtime, reverse=True)
