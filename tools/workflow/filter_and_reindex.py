@@ -16,6 +16,7 @@ import re
 from typing import List
 from pathlib import Path
 import subprocess
+from zenml import step
 
 
 BOILERPLATE_PATTERNS = [
@@ -96,6 +97,20 @@ def generate_cleaned_documents(raw_path: str = 'data/artifacts/raw_documents.jso
 
     write_cleaned(cleaned, out_path)
     return cleaned
+
+
+@step
+def generate_cleaned_documents_step(raw_path: str = 'data/artifacts/raw_documents.json', summaries_path: str = 'output/all_cleaned_summaries.json', out_path: str = 'data/artifacts/cleaned_documents.json'):
+    """ZenML step wrapper for generate_cleaned_documents.
+
+    Calls the existing helper and returns (out_path, metadata) for traceability.
+    """
+    cleaned = generate_cleaned_documents(raw_path=raw_path, summaries_path=summaries_path, out_path=out_path)
+    try:
+        count = len(cleaned)
+    except Exception:
+        count = 0
+    return out_path, {"count": count}
 
 
 def main():

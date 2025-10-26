@@ -29,6 +29,7 @@ try:
 except Exception:
     docx = None
 import boto3
+from zenml import step
 
 
 def _is_json_serializable(obj):
@@ -194,3 +195,21 @@ def generate_raw_documents(out_dir: str = "data/artifacts", configs_path: str = 
         print(f"Saved ETL output to {out_path}")
 
     return documents_to_write
+
+
+@step
+def generate_raw_documents_step(out_dir: str = "data/artifacts", configs_path: str = "configs/s3_etl.yaml", env_file: str = ".env.s3"):
+    """ZenML step wrapper for generate_raw_documents.
+
+    Calls the existing helper, preserves backward compatibility, and returns an
+    explicit artifact path plus metadata for traceability: (out_path, metadata).
+    """
+    documents = generate_raw_documents(out_dir=out_dir, configs_path=configs_path, env_file=env_file)
+    out_path = os.path.join(out_dir, "raw_documents.json")
+    count = 0
+    try:
+        if isinstance(documents, (list, tuple)):
+            count = len(documents)
+    except Exception:
+        count = 0
+    return out_path, {"count": count}

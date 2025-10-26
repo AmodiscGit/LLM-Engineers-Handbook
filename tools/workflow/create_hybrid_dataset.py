@@ -26,6 +26,10 @@ import os
 import uuid
 import re
 from collections import Counter
+from typing import Any, Tuple
+
+from loguru import logger
+from zenml import step
 
 
 def load_json(path):
@@ -72,7 +76,9 @@ def find_best_match(summary_text, docs):
             best_score = score
             best = doc
 
-    if best is not None and best_score > 0.05:
+    # Require a non-trivial overlap to consider a match. Raise threshold to avoid
+    # spuriously matching very short or generic summaries.
+    if best is not None and best_score > 0.20:
         return best, best_score, "overlap"
 
     return None, 0.0, None
@@ -95,6 +101,7 @@ def main():
     )
 
 
+@step
 def generate_hybrid_dataset(
     summaries_path: str = "output/all_cleaned_summaries.json",
     cleaned_docs_path: str = "data/artifacts/cleaned_documents.json",
@@ -109,7 +116,8 @@ def generate_hybrid_dataset(
     """
 
     if not os.path.exists(summaries_path):
-        raise SystemExit(f"Summaries file not found: {summaries_path}")
+        # Raise a clear error so ZenML records the failure in the run
+        raise FileNotFoundError(f"Summaries file not found: {summaries_path}")
 
     summaries = load_json(summaries_path)
     # ensure it's a list
@@ -123,30 +131,50 @@ def generate_hybrid_dataset(
     docs = []
     # If cleaned docs are missing, run the filter-and-reindex step to produce them
     if not os.path.exists(cleaned_docs_path):
+        logger.info(
+            "cleaned_docs_path %s not found; attempting to generate it via tools.workflow.filter_and_reindex.generate_cleaned_documents()...",
+            cleaned_docs_path,
+        )
+        # Prefer importing the lightweight helper to avoid running an expensive pipeline
         try:
-            print(f"cleaned_docs_path {cleaned_docs_path} not found; generating it via tools.workflow.filter_and_reindex.generate_cleaned_documents()...")
-            # Prefer importing the module and calling the lightweight helper to avoid running the expensive pipeline
             from tools.workflow.filter_and_reindex import generate_cleaned_documents
 
             try:
                 generate_cleaned_documents(raw_path=raw_docs_path, summaries_path=summaries_path, out_path=cleaned_docs_path)
             except Exception:
-                # fall back to the full script if helper fails
+                # fall back to running the script as a separate run (best-effort)
                 import runpy
 
                 runpy.run_path(os.path.join("tools", "workflow", "filter_and_reindex.py"), run_name="__main__")
         except Exception as e:
-            print(f"Failed to generate cleaned documents via filter_and_reindex: {e}")
+            logger.warning("Failed to generate cleaned documents via filter_and_reindex: %s", e)
+    # Load candidate docs from cleaned and raw paths and deduplicate them.
+    seen_ids = set()
+    seen_content = set()
     for p in (cleaned_docs_path, raw_docs_path):
         if os.path.exists(p):
             data = load_json(p)
+            items = []
             if isinstance(data, dict) and "artifact_data" in data and isinstance(data["artifact_data"], list):
-                for d in data["artifact_data"]:
-                    docs.append(d)
+                items = data["artifact_data"]
             elif isinstance(data, list):
-                docs.extend(data)
+                items = data
+            for d in items:
+                # prefer stable id or link for deduplication
+                doc_id = d.get("id") or d.get("link")
+                content = d.get("content", "")
+                norm = normalize_text(content)[:1000] if content else None
+                if doc_id and doc_id in seen_ids:
+                    continue
+                if norm and norm in seen_content:
+                    continue
+                if doc_id:
+                    seen_ids.add(doc_id)
+                if norm:
+                    seen_content.add(norm)
+                docs.append(d)
 
-    print(f"Loaded {len(summaries)} summaries and {len(docs)} candidate raw docs for matching.")
+    logger.info("Loaded %d summaries and %d candidate raw docs for matching.", len(summaries), len(docs))
 
     paired = 0
     unmatched = 0
@@ -155,35 +183,40 @@ def generate_hybrid_dataset(
 
     os.makedirs(os.path.dirname(out_jsonl), exist_ok=True)
 
-    with open(out_jsonl, "w", encoding="utf-8") as out_f:
-        for i, s in enumerate(summaries):
-            summary_text = s.get("summary") or s.get("text") or ""
-            source_file = s.get("source_file")
-            index = s.get("index")
-            rec = {
-                "id": str(uuid.uuid4()),
-                "summary": summary_text,
-                "source_file": source_file,
-                "index": index,
-            }
+    try:
+        with open(out_jsonl, "w", encoding="utf-8") as out_f:
+            for i, s in enumerate(summaries):
+                summary_text = s.get("summary") or s.get("text") or ""
+                source_file = s.get("source_file")
+                index = s.get("index")
+                rec = {
+                    "id": str(uuid.uuid4()),
+                    "summary": summary_text,
+                    "source_file": source_file,
+                    "index": index,
+                }
 
-            best_doc, score, method = find_best_match(summary_text, docs)
-            if best_doc:
-                rec["matched_raw_doc_id"] = best_doc.get("id") or best_doc.get("link") or None
-                rec["matched_score"] = float(score)
-                rec["matched_method"] = method
-                rec["source"] = best_doc.get("content")
-                paired += 1
-            else:
-                rec["matched_raw_doc_id"] = None
-                rec["matched_score"] = 0.0
-                rec["matched_method"] = None
-                rec["source"] = None
-                unmatched += 1
+                best_doc, score, method = find_best_match(summary_text, docs)
+                if best_doc:
+                    rec["matched_raw_doc_id"] = best_doc.get("id") or best_doc.get("link") or None
+                    rec["matched_score"] = float(score)
+                    rec["matched_method"] = method
+                    rec["source"] = best_doc.get("content")
+                    paired += 1
+                else:
+                    rec["matched_raw_doc_id"] = None
+                    rec["matched_score"] = 0.0
+                    rec["matched_method"] = None
+                    rec["source"] = None
+                    unmatched += 1
 
-            out_f.write(json.dumps(rec, ensure_ascii=False) + "\n")
-            results.append(rec)
-            written += 1
+                out_f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+                results.append(rec)
+                written += 1
+    except Exception as e:
+        logger.exception("Failed while writing hybrid jsonl to %s: %s", out_jsonl, e)
+        # Re-raise so pipeline sees the failure
+        raise
 
     report = {
         "summaries_total": len(summaries),
@@ -193,13 +226,17 @@ def generate_hybrid_dataset(
         "output_file": out_jsonl,
     }
 
-    with open(report_path, "w", encoding="utf-8") as rf:
-        json.dump(report, rf, indent=2)
+    try:
+        with open(report_path, "w", encoding="utf-8") as rf:
+            json.dump(report, rf, indent=2)
+    except Exception as e:
+        logger.exception("Failed to write report to %s: %s", report_path, e)
+        raise
 
-    print("Done. Report:")
-    print(json.dumps(report, indent=2))
+    logger.info("Done. Report: %s", json.dumps(report, indent=2))
 
-    return results
+    # Explicit outputs: return the report dict and the path to the generated JSONL
+    return report, out_jsonl
 
 
 if __name__ == "__main__":

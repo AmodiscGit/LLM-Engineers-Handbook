@@ -10,6 +10,7 @@ Provides main(input_dir, output_file) which merges summary JSONs into a cleaned 
 import os
 import json
 from glob import glob
+from zenml import step
 
 
 def load_json(path):
@@ -60,7 +61,30 @@ def main(input_dir="output", output_file="output/all_cleaned_summaries.json"):
     with open(output_file, "w") as f:
         json.dump(all_summaries, f, indent=2)
     print(f"Merged and cleaned summaries with metadata written to {output_file}")
+    # Return explicit artifact path + metadata for ZenML tracing
+    try:
+        count = len(all_summaries)
+    except Exception:
+        count = 0
+    return output_file, {"count": count}
 
 
 if __name__ == "__main__":
     main()
+
+
+@step
+def merge_and_clean_summaries_step(input_dir: str = "output", output_file: str = "output/all_cleaned_summaries.json"):
+    """ZenML step wrapper for the merge-and-clean helper.
+
+    Calls the existing `main` and returns (output_file, metadata).
+    """
+    main(input_dir=input_dir, output_file=output_file)
+    # Load the output to compute count
+    try:
+        with open(output_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        count = len(data) if isinstance(data, list) else 1
+    except Exception:
+        count = 0
+    return output_file, {"count": count}
