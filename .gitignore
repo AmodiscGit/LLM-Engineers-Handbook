@@ -180,3 +180,4 @@ configs/s3_etl.yaml
 .env.s3
 /models/test-hf
 /models/test-hf2
+/models
