@@ -33,6 +33,7 @@ from transformers import (
     TrainingArguments,
     DataCollatorWithPadding,
 )
+import torch
 
 try:
     from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
@@ -100,7 +101,30 @@ def main():
 
     ds_proc = ds.map(map_fn, remove_columns=ds.column_names)
 
-    data_collator = DataCollatorWithPadding(tokenizer)
+    # Custom data collator: use tokenizer.pad for inputs and pad/truncate labels manually
+    def data_collator(features):
+        labels = [f.get("labels") for f in features]
+        features_wo_labels = [{k: v for k, v in f.items() if k != "labels"} for f in features]
+        batch = tokenizer.pad(features_wo_labels, padding=True, return_tensors="pt")
+
+        max_len = batch["input_ids"].size(1)
+        padded_labels = []
+        for lab in labels:
+            if isinstance(lab, list):
+                if len(lab) > max_len:
+                    lab = lab[-max_len:]
+                padded = lab + [-100] * (max_len - len(lab))
+            elif isinstance(lab, torch.Tensor):
+                lab = lab.tolist()
+                if len(lab) > max_len:
+                    lab = lab[-max_len:]
+                padded = lab + [-100] * (max_len - len(lab))
+            else:
+                padded = [-100] * max_len
+            padded_labels.append(padded)
+
+        batch["labels"] = torch.tensor(padded_labels, dtype=torch.long)
+        return batch
 
     print("Loading base model:", args.model)
     load_kwargs = {}

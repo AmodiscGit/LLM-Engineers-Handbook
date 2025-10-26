@@ -35,6 +35,7 @@ from transformers import (
     DataCollatorWithPadding,
     EarlyStoppingCallback,
 )
+import torch
 
 
 def parse_args():
@@ -116,8 +117,36 @@ def main():
     if ds_eval is not None:
         ds_proc_eval = ds_eval.map(fn_map, remove_columns=ds_eval.column_names)
 
-    # Data collator will pad input_ids and labels (labels already contain -100 for masked tokens)
-    data_collator = DataCollatorWithPadding(tokenizer)
+    # Custom data collator: pad inputs via tokenizer.pad and pad labels manually to the same length
+    def data_collator(features):
+        # features: list of dicts with keys input_ids, attention_mask, labels
+        labels = [f.get("labels") for f in features]
+        # Prepare features without labels for tokenizer.pad
+        features_wo_labels = [{k: v for k, v in f.items() if k != "labels"} for f in features]
+        # tokenizer.pad will return tensors when return_tensors='pt'
+        batch = tokenizer.pad(features_wo_labels, padding=True, return_tensors="pt")
+
+        # Ensure labels are padded/truncated to match batch sequence length
+        max_len = batch["input_ids"].size(1)
+        padded_labels = []
+        for lab in labels:
+            if isinstance(lab, list):
+                # truncate from the left to keep the last tokens (completion end)
+                if len(lab) > max_len:
+                    lab = lab[-max_len:]
+                padded = lab + [-100] * (max_len - len(lab))
+            elif isinstance(lab, torch.Tensor):
+                lab = lab.tolist()
+                if len(lab) > max_len:
+                    lab = lab[-max_len:]
+                padded = lab + [-100] * (max_len - len(lab))
+            else:
+                # fallback: create fully masked labels
+                padded = [-100] * max_len
+            padded_labels.append(padded)
+
+        batch["labels"] = torch.tensor(padded_labels, dtype=torch.long)
+        return batch
 
     print("Loading model (this may download weights)...")
     model = AutoModelForCausalLM.from_pretrained(args.model)
