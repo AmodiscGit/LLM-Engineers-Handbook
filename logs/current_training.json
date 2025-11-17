@@ -1,1 +1,1 @@
-{"pid": 26995, "cmd": "poetry run python tools/train_hf_finetune.py --data tools/ft_dataset.jsonl --model distilgpt2 --output models/hf-finetuned --epochs 3 --batch_size 8", "log_path": "logs/training_20251028_190856.log", "start_time": "20251028_190856"}
+{"pid": 22591, "cmd": "poetry run python tools/train_hf_finetune.py --data tools/ft_dataset.jsonl --model distilgpt2 --output models/hf-finetuned --epochs 3 --batch_size 8", "log_path": "logs/training_20251117_105333.log", "start_time": "20251117_105333"}

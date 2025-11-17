@@ -59,6 +59,16 @@ def resolve_link_from_payload(payload, raw_docs):
     return None
 
 
+def check_qdrant_alive(url="http://127.0.0.1:6333"):
+    import requests
+    try:
+        resp = requests.get(f"{url}/collections", timeout=2)
+        if resp.status_code == 200:
+            return True
+        return False
+    except Exception:
+        return False
+
 def run_retrieval(query: str, topk: int, threshold: float, use_embeddings: bool = True, collection: str = "llm_engineering_chunks", no_etl: bool = False, no_hybrid: bool = False):
     # lazy imports
     try:
@@ -68,8 +78,14 @@ def run_retrieval(query: str, topk: int, threshold: float, use_embeddings: bool 
         st.error(f"Missing packages: {e}. Install sentence-transformers and qdrant-client in the project environment.")
         return []
 
+
+    qdrant_url = "http://127.0.0.1:6333"
+    if not check_qdrant_alive(qdrant_url):
+        st.error(f"Qdrant is not reachable at {qdrant_url}. Please start Qdrant and try again.")
+        return []
+
     model = SentenceTransformer("all-MiniLM-L6-v2")
-    client = QdrantClient(url="http://127.0.0.1:6333")
+    client = QdrantClient(url=qdrant_url)
 
     q_emb = model.encode(query)
     hits = client.search(collection_name=collection, query_vector=list(q_emb), limit=topk)
@@ -369,26 +385,26 @@ def main():
                 except Exception as e:
                     bad.append((i, str(e)))
 
-            if bad:
-                st.error(f"Validation failed: {len(bad)} problem(s)")
-                for row, msg in bad[:10]:
-                    st.write(f"Line {row}: {msg}")
-                if len(bad) > 10:
-                    st.write(f"...and {len(bad)-10} more issues")
-            else:
-                try:
-                    ft_path.parent.mkdir(parents=True, exist_ok=True)
-                    with open(ft_path, "w", encoding="utf-8") as f:
-                        f.write("\n".join([json.dumps(o, ensure_ascii=False) for o in parsed]) + "\n")
-                    st.success(f"Wrote {len(parsed)} records to {ft_path}")
-                except Exception as e:
-                    st.error(f"Failed to write dataset: {e}")
-
+                if bad:
+                    st.error(f"Validation failed: {len(bad)} problem(s)")
+                    for row, msg in bad[:10]:
+                        st.write(f"Line {row}: {msg}")
+                    if len(bad) > 10:
+                        st.write(f"...and {len(bad)-10} more issues")
+                else:
+                    try:
+                        ft_path.parent.mkdir(parents=True, exist_ok=True)
+                        with open(ft_path, "w", encoding="utf-8") as f:
+                            f.write("\n".join([json.dumps(o, ensure_ascii=False) for o in parsed]) + "\n")
+                        st.success(f"Wrote {len(parsed)} records to {ft_path}")
+                    except Exception as e:
+                        st.error(f"Failed to write dataset: {e}")
+    
             # --- Single-record form to append one example to tools/ft_dataset.jsonl ---
             st.markdown("---")
             st.markdown("**Add a single example to the fine-tune dataset**")
             st.info("Use these fields to add one prompt/completion pair to tools/ft_dataset.jsonl. This is helpful for quick iterative edits before training.")
-
+    
             # Prefill the Question box with a short helpful placeholder
             question_input = st.text_area(
                 "Question / Prompt",
@@ -396,17 +412,30 @@ def main():
                 height=120,
                 placeholder="Question: ...\n\nUse the following sources to answer:\n\nSource 1: s3://...\nSummary: ...\n\nAnswer concisely:",
             )
+            # Use session_state to persist input values
+            if "question_input" not in st.session_state:
+                st.session_state["question_input"] = ""
+            if "completion_input" not in st.session_state:
+                st.session_state["completion_input"] = ""
+    
+            question_input = st.text_area(
+                "Question / Prompt",
+                value=st.session_state["question_input"],
+                height=120,
+                placeholder="Question: ...\n\nUse the following sources to answer:\n\nSource 1: s3://...\nSummary: ...\n\nAnswer concisely:",
+                key="question_input"
+            )
             completion_input = st.text_area(
                 "Answer / Completion",
-                value="",
+                value=st.session_state["completion_input"],
                 height=120,
                 placeholder="The concise answer text here (what the model should generate).",
+                key="completion_input"
             )
-
-            # stacked buttons (one per line)
+    
             append_single = st.button("Append single record to ft_dataset.jsonl", key="append_single")
             clear_fields = st.button("Clear fields", key="clear_fields")
-
+    
             # If the button doesn't expose a stable aria-label (some Streamlit versions leave it empty),
             # inject a small JS snippet to find the button by its visible text and style it orange.
             try:
@@ -414,27 +443,25 @@ def main():
                     """
                     <script>
                     (function(){
-                      const label = "Append single record to ft_dataset.jsonl";
-                      function styleBtn(){
-                        const buttons = Array.from(document.querySelectorAll('button'));
-                        for(const b of buttons){
-                          // normalize inner text and trim
-                          const txt = (b.innerText || '').trim();
-                          if(txt === label || txt.startsWith(label)){
-                            b.style.backgroundColor = 'orange';
-                            b.style.color = 'white';
-                            b.style.border = 'none';
-                            b.style.boxShadow = 'none';
-                            b.style.transition = 'background-color 120ms ease-in-out';
-                            b.addEventListener('mouseover', ()=> b.style.backgroundColor = 'darkorange');
-                            b.addEventListener('mouseout', ()=> b.style.backgroundColor = 'orange');
-                          }
+                        const label = "Append single record to ft_dataset.jsonl";
+                        function styleBtn(){
+                            const buttons = Array.from(document.querySelectorAll('button'));
+                            for(const b of buttons){
+                                const txt = (b.innerText || '').trim();
+                                if(txt === label || txt.startsWith(label)){
+                                    b.style.backgroundColor = 'orange';
+                                    b.style.color = 'white';
+                                    b.style.border = 'none';
+                                    b.style.boxShadow = 'none';
+                                    b.style.transition = 'background-color 120ms ease-in-out';
+                                    b.addEventListener('mouseover', ()=> b.style.backgroundColor = 'darkorange');
+                                    b.addEventListener('mouseout', ()=> b.style.backgroundColor = 'orange');
+                                }
+                            }
                         }
-                      }
-                      // run after short delay and watch for DOM changes
-                      setTimeout(styleBtn, 200);
-                      const obs = new MutationObserver(styleBtn);
-                      obs.observe(document.body, {childList:true, subtree:true});
+                        setTimeout(styleBtn, 200);
+                        const obs = new MutationObserver(styleBtn);
+                        obs.observe(document.body, {childList:true, subtree:true});
                     })();
                     </script>
                     """,
